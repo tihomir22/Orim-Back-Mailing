@@ -12,6 +12,7 @@ interface SendEmail {
   to: string;
   gameSpecific: GameSpecs;
   accepted: boolean;
+  authorizationKey: string;
 }
 
 interface GameSpecs {
@@ -45,6 +46,12 @@ app.get("/", (req, res) => {
 app.post("/sendWithdrawalMail", async (req, res) => {
   try {
     const mailConfig: SendEmail = req.body;
+    if (
+      !mailConfig.authorizationKey ||
+      mailConfig.authorizationKey != process.env.CODE_API
+    ) {
+      res.status(401).send("You are not authorized!")
+    }
     let activeChain: ChainAvalaible = null;
     const chainsAvalaibles: ChainAvalaible[] = (
       await axios.get("https://api.orimgames.com/chainsAvalaible")
@@ -55,11 +62,11 @@ app.post("/sendWithdrawalMail", async (req, res) => {
     );
 
     if (!chainsAvalaibles || chainsAvalaibles.length === 0) {
-      throw new Error("The chains ara empty!");
+      res.status(500).send("The chains are empty!")
     }
 
     if (!activeChain) {
-      throw new Error("No active chain found!");
+      res.status(500).send("No active chain found!")
     }
 
     const message = mailConfig.accepted
@@ -97,7 +104,7 @@ app.post("/sendWithdrawalMail", async (req, res) => {
         throw error;
       });
   } catch (error) {
-    throw error;
+    res.status(500).send(error)
   }
 });
 
