@@ -1,7 +1,9 @@
-export function parseAmount(amount: number, digitsChain: number) {
-  let newAmount = amount;
-  for (let i = 0; i < digitsChain; i++) {
-    newAmount = newAmount * 10;
+export function divideByDigitsToBase(
+  inWeiNumber: number,
+  numberDigits: number
+) {
+  for (let i = 0; i < numberDigits; i++) {
+    inWeiNumber = inWeiNumber / 10;
   }
-  return newAmount;
+  return inWeiNumber;
 }

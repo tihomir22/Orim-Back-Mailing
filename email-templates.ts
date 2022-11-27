@@ -2,7 +2,7 @@ export const SUCCESSFUL_TEMPLATE = (
   nameGame: string,
   symbol: string,
   amountInSmallUnit: number,
-  amountInBigUnit: number,
+  amountInBigUnit: string,
   nameUnits: string,
   tx: string
 ) => {
@@ -18,9 +18,8 @@ Below we are attaching the tx, so you can track it :)
 
 ${tx}
 
-Kind regards from the whole Orim Games team
-
-Have a good day!`;
+Kind regards from the whole Orim Games team!
+`;
 };
 
 export const ERROR_TEMPLATE = (nameGame: string) => {
@@ -34,8 +33,6 @@ For that reason, we would like to ask you, if you could provide us some proofs o
 
 On the meanwhile, your requests will be halted until you answer to this mail.
 
-Kind regards from the whole Orim Games team
-
-Have a good day!
+Kind regards from the whole Orim Games team!
     `;
 };

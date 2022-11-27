@@ -5,7 +5,7 @@ import helmet from "helmet";
 import nodemailer from "nodemailer";
 import { SUCCESSFUL_TEMPLATE, ERROR_TEMPLATE } from "./email-templates.js";
 import axios from "axios";
-import { parseAmount } from "./utils.js";
+import { divideByDigitsToBase } from "./utils.js";
 import { TEMPLATE_HTML } from "./template_withdraw.js";
 
 interface SendEmail {
@@ -50,7 +50,7 @@ app.post("/sendWithdrawalMail", async (req, res) => {
       !mailConfig.authorizationKey ||
       mailConfig.authorizationKey != process.env.CODE_API
     ) {
-      res.status(401).send("You are not authorized!")
+      res.status(401).send("You are not authorized!");
     }
     let activeChain: ChainAvalaible = null;
     const chainsAvalaibles: ChainAvalaible[] = (
@@ -62,19 +62,22 @@ app.post("/sendWithdrawalMail", async (req, res) => {
     );
 
     if (!chainsAvalaibles || chainsAvalaibles.length === 0) {
-      res.status(500).send("The chains are empty!")
+      res.status(500).send("The chains are empty!");
     }
 
     if (!activeChain) {
-      res.status(500).send("No active chain found!")
+      res.status(500).send("No active chain found!");
     }
 
     const message = mailConfig.accepted
       ? SUCCESSFUL_TEMPLATE(
           mailConfig.gameSpecific.name,
           activeChain.symbol,
-          parseAmount(mailConfig.gameSpecific.wAmount, activeChain.decimals),
           mailConfig.gameSpecific.wAmount,
+          divideByDigitsToBase(
+            mailConfig.gameSpecific.wAmount,
+            activeChain.decimals
+          ).toFixed(activeChain.decimals),
           activeChain.unitName,
           mailConfig.gameSpecific.tx
         )
@@ -104,7 +107,7 @@ app.post("/sendWithdrawalMail", async (req, res) => {
         throw error;
       });
   } catch (error) {
-    res.status(500).send(error)
+    res.status(500).send(error);
   }
 });
 
