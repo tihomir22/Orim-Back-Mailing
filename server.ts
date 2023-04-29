@@ -98,7 +98,7 @@ app.post("/sendWithdrawalMail", async (req, res) => {
         to: mailConfig.to,
         subject: `${mailConfig.gameSpecific.name} - ${mailConfig.gameSpecific.wAmount} ${activeChain.unitName} (${mailConfig.gameSpecific.wSymbol}) Withdrawal request`,
         text: message,
-        html: TEMPLATE_HTML(message),
+        html: TEMPLATE_HTML(message,mailConfig.accepted),
       })
       .then((data) => {
         res.send(data);
