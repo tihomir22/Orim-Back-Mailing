@@ -3,7 +3,11 @@ import cors from "cors";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import nodemailer from "nodemailer";
-import { SUCCESSFUL_TEMPLATE, ERROR_TEMPLATE } from "./email-templates.js";
+import {
+  SUCCESSFUL_TEMPLATE,
+  ERROR_TEMPLATE,
+  WITHDRAWAL_PROCESS_DONE,
+} from "./email-templates.js";
 import axios from "axios";
 import { divideByDigitsToBase } from "./utils.js";
 import { TEMPLATE_HTML } from "./template_withdraw.js";
@@ -13,6 +17,13 @@ interface SendEmail {
   gameSpecific: GameSpecs;
   accepted: boolean;
   authorizationKey: string;
+}
+
+interface SendWithdrawalNotification {
+  amountFiat: string;
+  manyWithdraws: string;
+  emails: string[];
+  chunkSize: number;
 }
 
 interface GameSpecs {
@@ -34,14 +45,87 @@ interface ChainAvalaible {
   baseReward: number;
 }
 
+let CAMPAIGN_SEND_WITHDRAWAL_DONE_STARTED = false;
+
 const app = express();
 dotenv.config();
 app.use(helmet());
 app.use(json());
 app.use(cors({}));
 
+async function sendEmail(
+  mailConfig: SendWithdrawalNotification,
+  emails: Array<string>
+) {
+  const message = WITHDRAWAL_PROCESS_DONE(
+    mailConfig.manyWithdraws,
+    mailConfig.amountFiat
+  );
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+    from: process.env.EMAIL_USER,
+  });
+  await transporter.sendMail({
+    from: `Orim Games <${process.env.EMAIL_USER}>`,
+    to: emails,
+    subject: `The moment you were waiting for`,
+    text: "Tu quiere tu quiere tu quiere",
+    html: message,
+  });
+}
+
 app.get("/", (req, res) => {
   res.send("1.0.0");
+});
+app.post("/sendWithdrawalDone", async (req, res) => {
+  try {
+    if (CAMPAIGN_SEND_WITHDRAWAL_DONE_STARTED == true) {
+      return res.status(500).send("This campaign has been started already");
+    }
+    CAMPAIGN_SEND_WITHDRAWAL_DONE_STARTED = true;
+    const mailConfig: SendWithdrawalNotification = req.body;
+    await sendEmail(
+      mailConfig,
+      mailConfig.emails.slice(0, mailConfig.chunkSize)
+    );
+
+    let currentChunk = mailConfig.chunkSize;
+    if (mailConfig.emails.length > currentChunk) {
+      const interval = setInterval(async () => {
+        console.log(currentChunk);
+        const lote = mailConfig.emails.slice(
+          currentChunk,
+          currentChunk + mailConfig.chunkSize
+        );
+        currentChunk += mailConfig.chunkSize;
+
+        try {
+          await sendEmail(mailConfig, lote);
+
+          if (currentChunk >= mailConfig.emails.length) {
+            clearInterval(interval);
+            CAMPAIGN_SEND_WITHDRAWAL_DONE_STARTED = false;
+          }
+        } catch (error) {
+          clearInterval(interval);
+          CAMPAIGN_SEND_WITHDRAWAL_DONE_STARTED = false;
+          res.status(500).send(error);
+        }
+      }, 60000);
+      res.send("Campaign started");
+    } else {
+      CAMPAIGN_SEND_WITHDRAWAL_DONE_STARTED = false;
+      res.send("Campaign started and finished");
+    }
+  } catch (error) {
+    CAMPAIGN_SEND_WITHDRAWAL_DONE_STARTED = false;
+    res.status(500).send(error);
+  }
 });
 app.post("/sendWithdrawalMail", async (req, res) => {
   try {
@@ -98,7 +182,7 @@ app.post("/sendWithdrawalMail", async (req, res) => {
         to: mailConfig.to,
         subject: `${mailConfig.gameSpecific.name} - ${mailConfig.gameSpecific.wAmount} ${activeChain.unitName} (${mailConfig.gameSpecific.wSymbol}) Withdrawal request`,
         text: message,
-        html: TEMPLATE_HTML(message,mailConfig.accepted),
+        html: TEMPLATE_HTML(message, mailConfig.accepted),
       })
       .then((data) => {
         res.send(data);
@@ -113,5 +197,5 @@ app.post("/sendWithdrawalMail", async (req, res) => {
 
 const PORT = process.env.PORT || 1488;
 app.listen(PORT, () => {
-  // console.log(`Server listening on port ${PORT}...`);
+  console.log(`Server listening on port ${PORT}...`);
 });
